@@ -9,6 +9,10 @@
 
 <a href="https://github.com/ashleve/lightning-hydra-template"><img alt="Template" src="https://img.shields.io/badge/-Lightning--Hydra--Template-017F2F?style=flat&logo=github&labelColor=gray"></a><br>
 
+<p align="center">
+  <img src="media/rollout.gif" alt="Rollout Animation" width="600"/>
+</p>
+
 </div>
 
 ## Documentation
