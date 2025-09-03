@@ -203,6 +203,7 @@ class PhysicsLitModule(L.LightningModule):
         GT_vel_fields_normalized = []
         GT_positions = []        
         rollouts = []
+        fields = []
         MSE_Fields_normalized = []
         MSE_Fields_latent = []
         propagated_latents = []
@@ -210,6 +211,7 @@ class PhysicsLitModule(L.LightningModule):
         for subset_iter in subset_iters:
             GT_vel_field_normalized = []
             rollout = []
+            field = []
             GT_pos = []
             MSE_Field_normalized = []
             MSE_Field_latent = []
@@ -271,6 +273,7 @@ class PhysicsLitModule(L.LightningModule):
             )
 
             rollout.append(new_pos.cpu())
+            field.append(unnormalize(preds_field).cpu())
             GT_pos.append(target_data.target_pos[:, jump_idx].cpu())
             GT_vel_field_normalized.append(
                 target_data.target_field[:, jump_idx].cpu()
@@ -333,12 +336,14 @@ class PhysicsLitModule(L.LightningModule):
                 )
 
                 rollout.append(new_pos.cpu())
+                field.append(unnormalize(preds_field).cpu())
                 GT_pos.append(target_data.target_pos[:, jump_idx].cpu())
                 GT_vel_field_normalized.append(
                     target_data.target_field[:, jump_idx].cpu()
                 )
                 MSE_Field_normalized.append(field_mse.cpu())
             rollouts.append(torch.stack(rollout))
+            fields.append(torch.stack(field))
             GT_positions.append(torch.stack(GT_pos))
             GT_vel_fields_normalized.append(
                 torch.stack(GT_vel_field_normalized)
@@ -348,6 +353,7 @@ class PhysicsLitModule(L.LightningModule):
             propagated_latents.append(torch.stack(propagated_latent))
         if len(subset_iters) == 1:
             rollouts = rollouts[0]
+            fields = fields[0]
             GT_positions = GT_positions[0]
             GT_vel_fields_normalized = GT_vel_fields_normalized[0]
             MSE_Fields_normalized = MSE_Fields_normalized[0]
@@ -355,6 +361,7 @@ class PhysicsLitModule(L.LightningModule):
             propagated_latents = propagated_latents[0]
         return (
             rollouts,
+            fields,
             GT_positions,
             GT_vel_fields_normalized,
             MSE_Fields_normalized,
