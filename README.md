@@ -13,6 +13,10 @@
   <img src="media/rollout.gif" alt="Rollout Animation" width="600"/>
 </p>
 
+<p align="center">
+  <img src="media/boundary.gif" alt="Boundary Interaction Animation" width="600"/>
+</p>
+
 </div>
 
 ## Documentation
