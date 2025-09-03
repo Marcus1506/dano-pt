@@ -17,7 +17,7 @@ Links to the documentation for using the template and the main frameworks are pr
 
 ## Setup
 
-Use the provided dockerfiles to build a suitable image. The image is not optimized, so ~45GB of storage space are required. See the associated <a href="https://github.com/Marcus1506/dano-pt/dockerfiles/README.md">
+Use the provided dockerfiles to build a suitable image. The image is not optimized, so ~45GB of storage space are required. See the associated <a href="https://github.com/Marcus1506/dano-pt/blob/main/dockerfiles/README.md">
   README
 </a> for more details.
 
