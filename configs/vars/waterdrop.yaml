@@ -1,0 +1,13 @@
+input_dim: 4
+output_dim: 4
+latent_dim: 192
+num_classes: 2
+num_total_timesteps: 1001
+
+box_size: [0.8, 0.8]
+
+supernode_radius: 0.05
+supernodes_max_neighbours: 8
+
+num_latent_tokens: 64
+n_supernodes: 96

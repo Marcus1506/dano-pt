@@ -1,0 +1,24 @@
+# @package _global_
+
+defaults:
+  - default
+  - override /data: waterdrop
+  - override /model: waterdrop
+  - override /vars: waterdrop
+  - override /callbacks: waterdrop
+
+logger:
+  wandb:
+    project: "waterdrop"
+
+tags: ["autoencoder"]
+
+trainer:
+  max_epochs: 30
+  check_val_every_n_epoch: 1
+
+data:
+  stage: autoencoder
+  overfit_single_trajectory: false
+  persistent_workers: true
+  type: velocity

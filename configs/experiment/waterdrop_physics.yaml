@@ -1,0 +1,32 @@
+# @package _global_
+
+defaults:
+  - default
+  - override /data: waterdrop
+  - override /model: waterdrop_physics
+  - override /vars: waterdrop
+  - override /callbacks: physics
+
+logger:
+  wandb:
+    project: "waterdrop_physics"
+
+tags: ["physics"]
+
+trainer:
+  max_epochs: 30
+  check_val_every_n_epoch: 1
+
+data:
+  stage: physics
+  overfit_single_trajectory: false
+  persistent_workers: true
+  type: velocity
+
+model:
+  mode: "physics"
+  propagation: "normal"
+  first_stage_model_ckpt: logs\train\runs\2025-09-02_16-10-21\waterdrop\pu1byyxz\checkpoints\epoch=26-step=404595.ckpt
+  first_stage_model_wandb_entity: 'learning1566'
+  first_stage_model_wandb_id: 'pu1byyxz'
+  first_stage_model_wandb_project: 'waterdrop'

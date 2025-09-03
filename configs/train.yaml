@@ -1,0 +1,25 @@
+# @package _global_
+
+defaults:
+  - _self_
+  - data: null
+  - model: null
+  - callbacks: waterdrop
+  - logger: wandb
+  - trainer: default
+  - paths: default
+  - vars: null
+  - extras: default
+  - hydra: default
+  - experiment: waterdrop
+  - hparams_search: null
+  - optional local: default
+  - debug: null
+
+task_name: "train"
+tags: ["dev"]
+train: True
+test: False
+ckpt_path: null
+seed: 42
+log_grads: False

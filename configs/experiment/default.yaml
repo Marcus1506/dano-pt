@@ -1,0 +1,17 @@
+# @package _global_
+
+defaults:
+  - override /logger: wandb
+  - override /trainer: default
+
+trainer:
+  accelerator: gpu
+  max_epochs: 100
+  log_every_n_steps: 10
+  check_val_every_n_epoch: 10
+  deterministic: False
+  num_sanity_val_steps: 0
+  devices:
+    - 0
+
+log_grads: False

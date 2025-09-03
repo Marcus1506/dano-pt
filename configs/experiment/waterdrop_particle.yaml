@@ -1,0 +1,31 @@
+# @package _global_
+
+defaults:
+  - default
+  - override /data: waterdrop_particle
+  - override /model: waterdrop_physics
+  - override /vars: waterdrop
+  - override /callbacks: waterdrop
+
+logger:
+  wandb:
+    project: "waterdrop_particle"
+
+tags: ["particle"]
+
+trainer:
+  max_epochs: 100
+  check_val_every_n_epoch: 1
+
+data:
+  stage: particle
+  n_jumps: 1
+  overfit_single_trajectory: true
+  persistent_workers: true
+
+model:
+  mode: "particle"
+  first_stage_model_ckpt: logs\train\runs\2025-03-18_21-52-39\waterdrop_particle_autoencoder\r842ii57\checkpoints\epoch=90-step=1456.ckpt
+  first_stage_model_wandb_entity: 'learning1566'
+  first_stage_model_wandb_id: 'r842ii57'
+  first_stage_model_wandb_project: 'waterdrop_particle_autoencoder'

@@ -1,0 +1,21 @@
+# @package _global_
+
+defaults:
+  - default
+
+trainer:
+  accelerator: cpu
+  devices: 1
+
+data:
+  train_split: valid
+  eval_split: valid
+
+# Disable lr scheduler
+callbacks:
+  config_lr_scheduler: null
+  learning_rate_monitor: null
+  # Disable model checkpoints
+  model_checkpoint: null
+model:
+  scheduler: null

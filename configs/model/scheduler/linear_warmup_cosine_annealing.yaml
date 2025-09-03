@@ -1,0 +1,7 @@
+scheduler:
+  _target_: src.modules.schedulers.LinearWarmupCosineAnnealingLR
+  _partial_: true
+  warmup_epochs: 2
+  max_epochs: ${trainer.max_epochs}
+  min_lr: 1e-6
+  last_epoch: -1

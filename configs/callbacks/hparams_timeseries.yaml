@@ -1,0 +1,3 @@
+hparams_timeseries:
+  _target_: src.callbacks.hparams_timeseries.HyperparamTimeseriesLogger
+  log_on: epoch

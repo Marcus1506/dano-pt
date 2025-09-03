@@ -1,0 +1,32 @@
+# @package _global_
+
+task_name: "debug"
+
+# callbacks: null
+
+extras:
+  ignore_warnings: False
+  enforce_tags: False
+
+hydra:
+  job_logging:
+    root:
+      level: DEBUG
+
+logger: null
+trainer:
+  overfit_batches: 2
+  log_every_n_steps: 1
+  check_val_every_n_epoch: 1
+  deterministic: True
+  num_sanity_val_steps: 0
+  max_epochs: 1000
+  enable_checkpointing: False
+  #detect_anomaly: true
+
+data:
+  num_workers: 0
+  pin_memory: False
+  batch_size: 8
+
+log_grads: True

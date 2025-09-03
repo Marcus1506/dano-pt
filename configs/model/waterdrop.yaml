@@ -1,0 +1,83 @@
+defaults:
+  - default
+  - _self_
+
+_target_: src.models.autoencoder.AutoencoderLitModule
+num_classes: ${vars.num_classes}
+
+model:
+  _target_: src.models.autoencoder.Autoencoder
+  _partial_: True
+  encoder:
+    _target_: src.models.components.encoders.pool_transformer_perceiver.PoolTransformerPerceiver
+    supernode_pooling:
+      _target_: src.modules.supernode_pooling.SupernodePooling
+      supernodes_radius: ${vars.supernode_radius}
+      supernodes_max_neighbours: ${vars.supernodes_max_neighbours}
+      net:
+        _target_: src.modules.supernode_pooling.SupernodeGnn
+        input_dim: ${vars.input_dim}
+        hidden_dim: 96
+        input_proj_hidden: 96
+        message_net_hidden: 96
+        ndim: 2
+        aggr:
+          _target_: torch_geometric.nn.aggr.MeanAggregation
+        pos_embed:
+          _target_: src.modules.positional_embeddings.ContinuousSincosEmbed
+          _partial_: True
+          box_size: ${vars.box_size}
+        relative_pos_embed:
+          _target_: src.modules.positional_embeddings.ContinuousSincosEmbed
+          _partial_: True
+          box_size: ${vars.supernode_radius}
+        init_weights: torch
+    transformer_dim: 96
+    transformer_depth: 4
+    transformer_attn_heads: 2
+    perceiver_dim: ${vars.latent_dim}
+    perceiver_attn_heads: 3
+    num_latent_tokens: ${vars.num_latent_tokens}
+    condition_dim: 768
+    output_ln: true
+    init_weights: torch
+
+  decoder:
+    _target_: src.models.components.decoders.transformer_perceiver.TransformerPerceiver
+    input_dim: ${vars.latent_dim}
+    transformer_dim: ${vars.latent_dim}
+    transformer_depth: 4
+    transformer_attn_heads: 3
+    pos_embed:
+      _target_: src.modules.positional_embeddings.ContinuousSincosEmbed
+      _partial_: True
+      box_size: ${vars.box_size}
+    query_mlp_hidden: ${vars.latent_dim}
+    perceiver_dim: ${vars.latent_dim}
+    perceiver_attn_heads: 3
+    feature_dim: ${vars.output_dim}
+    condition_dim: 768
+    ndim: 2
+    init_weights: torch
+
+  conditioner:
+    _target_: src.models.components.conditioners.timestep_conditioner.TimestepConditioner
+    dim: 192
+    timestep_mlp_hidden: 768
+    condition_dim: 768
+    num_total_timesteps: ${vars.num_total_timesteps}
+    init_weights: torch
+
+optimizer:
+  _target_: torch.optim.AdamW
+  _partial_: True
+  lr: 0.0001
+  weight_decay: 0.05
+
+scheduler:
+  _target_: src.modules.schedulers.LinearWarmupCosineAnnealingLR
+  _partial_: true
+  warmup_epochs: 2
+  max_epochs: ${trainer.max_epochs}
+  min_lr: 1e-6
+  last_epoch: -1
