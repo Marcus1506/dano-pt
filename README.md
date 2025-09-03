@@ -10,11 +10,11 @@
 <a href="https://github.com/ashleve/lightning-hydra-template"><img alt="Template" src="https://img.shields.io/badge/-Lightning--Hydra--Template-017F2F?style=flat&logo=github&labelColor=gray"></a><br>
 
 <p align="center">
-  <img src="media/rollout.gif" alt="Rollout Animation" width="600"/>
+  <img src="media/rollout.gif" alt="Rollout Animation" width="1200"/>
 </p>
 
 <p align="center">
-  <img src="media/boundary.gif" alt="Boundary Interaction Animation" width="600"/>
+  <img src="media/boundary.gif" alt="Boundary Interaction Animation" width="1200"/>
 </p>
 
 </div>
