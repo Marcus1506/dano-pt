@@ -263,7 +263,7 @@ class AutoencoderLitModule(L.LightningModule):
             1, # Fixed stride for autoencoder
             fixed_length
         )
-        n_old = dataset.n_fields - 1 # always use one new velocity
+        n_redundant = dataset.n_fields - 1 # always use one new velocity
 
         GT_vel_fields_normalized = []
         GT_positions = []
@@ -306,7 +306,7 @@ class AutoencoderLitModule(L.LightningModule):
                     old_position=pos,
                     field_prediction=unnormalize(retrieved_field),
                     type="velocity",
-                    n_old=n_old
+                    n_redundant=n_redundant
                 )
                 rollout.append(new_pos.cpu())
                 #

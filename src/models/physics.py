@@ -77,7 +77,11 @@ class PhysicsLitModule(L.LightningModule):
                 if self.hparams.first_stage_model_ckpt is not None
                 else os.path.join(cfg.callbacks.model_checkpoint.dirpath, "last.ckpt")
             )
-            checkpoint = torch.load(ckpt_path, map_location=self.first_stage_model.device)
+            checkpoint = torch.load(
+                ckpt_path,
+                map_location=self.first_stage_model.device,
+                weights_only=False
+            )
             self.first_stage_model.load_state_dict(checkpoint["state_dict"])
 
         self.first_stage_model.eval()
@@ -226,8 +230,8 @@ class PhysicsLitModule(L.LightningModule):
             n, n_time, n_dim = input_data.input_enc_field.shape
 
             if model_type == "velocity":
-                n_old = n_time - dataset.n_jump_ahead_timesteps
-            elif model_type == "displacement": n_old = 0
+                n_redundant = n_time - dataset.n_jump_ahead_timesteps
+            elif model_type == "displacement": n_redundant = 0
 
             # we solve jumping in rollout by striding the dataloader:
             jump_idx = 0
@@ -269,7 +273,7 @@ class PhysicsLitModule(L.LightningModule):
                 old_position=target_data.target_pos[:, jump_idx],
                 field_prediction=unnormalize(preds_field),
                 type=model_type,
-                n_old=n_old
+                n_redundant=n_redundant
             )
 
             rollout.append(new_pos.cpu())
@@ -332,7 +336,7 @@ class PhysicsLitModule(L.LightningModule):
                     old_position=pos,
                     field_prediction=unnormalize(preds_field),
                     type=model_type,
-                    n_old=n_old
+                    n_redundant=n_redundant
                 )
 
                 rollout.append(new_pos.cpu())

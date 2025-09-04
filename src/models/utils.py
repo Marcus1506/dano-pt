@@ -21,13 +21,14 @@ def update_position_cycle(
         old_position: Tensor,
         field_prediction: Tensor,
         type: str,
-        n_old: int
+        n_redundant: int
     ) -> Tensor:
     """
     Takes in field prediction and old position and returns new position.
     Fields are either of shape (n, t, n_dim) or (n, n_jumps, t, n_dim).
     """
-    field_preds = field_prediction[..., n_old:, :]
+    if n_redundant != 0:
+        field_preds = field_prediction[..., :-n_redundant, :]
     if field_preds.ndim > 2:
         field_preds = torch.sum(field_preds, dim=-2)
     else:
