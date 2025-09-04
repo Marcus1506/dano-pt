@@ -187,6 +187,7 @@ class PhysicsLitModule(L.LightningModule):
             Tensor | list[Tensor],
             Tensor | list[Tensor],
             Tensor | list[Tensor],
+            Tensor | list[Tensor],
             Tensor | list[Tensor]
             ]:
         dataset = particle_dm.get_dataset(split=split)

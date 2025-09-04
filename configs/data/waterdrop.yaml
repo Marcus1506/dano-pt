@@ -4,7 +4,7 @@ train_split: train
 eval_split: test
 n_fields: 2
 n_jump_ahead_timesteps: 2
-n_jumps: 2
+n_jumps: 1
 type: velocity
 stage: autoencoder
 n_particle_types: 1
