@@ -7,16 +7,16 @@ docker build -f dockerfiles/torch_geometric_base.dockerfile --target torch_geome
 ```
 
 ```bash
-docker build -f dockerfiles/upt_student.dockerfile -t upt_student:local .
+docker build -f dockerfiles/dano-pt.dockerfile -t dano-pt:local .
 ```
 
 ## VSCode
 
 ```json
 {
-  "name": "upt_student",
+  "name": "dano-pt",
 
-  "image": "upt_student:local",
+  "image": "dano-pt:local",
 
   "workspaceFolder": "/workspace",
   "runArgs": [

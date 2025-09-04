@@ -18,3 +18,16 @@ RUN pip install --no-cache-dir \
     torch-scatter -f https://data.pyg.org/whl/torch-2.6.0+cu126.html \
     torch-cluster -f https://data.pyg.org/whl/torch-2.6.0+cu126.html \
     matplotlib
+
+# JupyterLab
+RUN pip install --no-cache-dir \
+    ipykernel==6.29.5 \
+    ipywidgets==8.1.5 \
+    nbformat \
+    nbclient
+
+RUN python3 -m ipykernel install --sys-prefix \
+    --name dano-pt \
+    --display-name "Python (dano-pt CUDA12.6)"
+
+RUN ln -sf /usr/bin/python3 /usr/bin/python
