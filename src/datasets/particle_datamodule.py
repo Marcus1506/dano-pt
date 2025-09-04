@@ -546,6 +546,7 @@ class ParticleDataset(InMemoryDataset):
 class ParticleDataModule(L.LightningDataModule):
     train_split: str = "train"
     eval_split: str = "valid"
+    test_split: str = "test"
     n_fields: int = 2
     n_jump_ahead_timesteps: int = 1
     n_jumps: int = 1
@@ -630,7 +631,7 @@ class ParticleDataModule(L.LightningDataModule):
             n_jump_ahead_timesteps=self.n_jump_ahead_timesteps,
             n_jumps=self.n_jumps,
             type=self.type,
-            split=self.eval_split,
+            split=self.test_split,
             mode=mode_val,
             n_particle_types=self.n_particle_types,
             n_supernodes=self.n_supernodes,

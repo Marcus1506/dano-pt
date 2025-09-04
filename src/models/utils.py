@@ -28,13 +28,13 @@ def update_position_cycle(
     Fields are either of shape (n, t, n_dim) or (n, n_jumps, t, n_dim).
     """
     if n_redundant != 0:
-        field_preds = field_prediction[..., :-n_redundant, :]
-    if field_preds.ndim > 2:
-        field_preds = torch.sum(field_preds, dim=-2)
+        field_prediction = field_prediction[..., :-n_redundant, :]
+    if field_prediction.ndim > 2:
+        field_prediction = torch.sum(field_prediction, dim=-2)
     else:
-        field_preds = field_preds.squeeze(1)
+        field_prediction = field_prediction.squeeze(1)
     if type in ["velocity", "displacement"]:
-        new_position = old_position + field_preds
+        new_position = old_position + field_prediction
     elif type == "acceleration":
         raise NotImplementedError
     return new_position
