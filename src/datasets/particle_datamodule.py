@@ -418,7 +418,7 @@ class ParticleDataset(InMemoryDataset):
             input_enc_field=input_fields,
             input_enc_particle_type=particle_type[perm_input],
             supernode_index=supernode_index,
-            input_timestep=position_dict["time_idx"][self.n_fields - 1],
+            input_timestep=position_dict["time_idx"][0],
             num_nodes=len(input_positions),
             idx=idx,
         )
