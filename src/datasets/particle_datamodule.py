@@ -144,85 +144,8 @@ class ParticleDataset(InMemoryDataset):
                         for i in range(1, self.n_jumps + 1)
                     ]
                 )
-            elif self.type == "acceleration":
-                assert self.n_jump_ahead_timesteps == self.n_fields - 1
-                self.n_per_traj = (
-                    self.n_seq - self.n_jump_ahead_timesteps * self.n_jumps - self.n_fields - 2
-                )
-                self.pos_getter = partial(
-                    self.get_positions,
-                    length=self.n_jump_ahead_timesteps * self.n_jumps + self.n_fields + 2,
-                )
-                self.field_getter = partial(self.get_fields, type=self.type)
-                self.target_field_idx = torch.tensor( # same as velocity
-                    [
-                        list(
-                            range(
-                                i * self.n_fields - 1,
-                                i * self.n_fields - 1 + self.n_fields,
-                            )
-                        )
-                        for i in range(1, self.n_jumps + 1)
-                    ]
-                )
-                self.target_pos_idx = torch.tensor(
-                    [
-                        list(
-                            range(
-                                i * self.n_jump_ahead_timesteps + self.n_fields - 1,
-                                i * self.n_jump_ahead_timesteps + self.n_fields + 1
-                            )
-                        )
-                        for i in range(1, self.n_jumps + 1)
-                    ]
-                )
             else:
-                raise ValueError(f"Unknown type: {self.type}. Expected 'velocity' or 'acceleration'.")
-
-        elif self.mode in ["particle_autoencoder", "particle"]:
-            raise NotImplementedError("This mode did not work out, name is misleading, \
-                                       it uses displacement predictions.")
-            self.pos_mean = torch.tensor(self.metadata["pos_mean"])
-            self.pos_std = torch.tensor(self.metadata["pos_std"])
-            displcmnt_key = f"displcmnt_{self.n_jump_ahead_timesteps}"
-            self.displcmnt_mean = torch.tensor(self.metadata[f"{displcmnt_key}_mean"])
-            self.displcmnt_std = torch.tensor(self.metadata[f"{displcmnt_key}_std"])
-            if self.n_jumps > 1:
-                raise NotImplementedError
-            self.n_seq = (
-                self.metadata["sequence_length_train"]
-                if "sequence_length_train" in self.metadata
-                else self.metadata["sequence_length"]
-            )
-            if self.mode == "particle_autoencoder":
-                self.n_jumps = 1
-                self.n_per_traj = (
-                    self.n_seq - self.n_jump_ahead_timesteps * self.n_jumps - self.n_fields + 1
-                )
-                self.pos_getter = partial(
-                    self.get_positions,
-                    length=self.n_jump_ahead_timesteps * self.n_jumps + self.n_fields,
-                )
-                self.target_pos_idx = torch.tensor(
-                    [
-                        i * self.n_jump_ahead_timesteps + self.n_fields - 1
-                        for i in range(1, self.n_jumps + 1)
-                    ]
-                )
-            else:
-                self.n_per_traj = (
-                    self.n_seq - self.n_jump_ahead_timesteps * (self.n_jumps + 1) - self.n_fields + 1
-                )
-                self.pos_getter = partial(
-                    self.get_positions,
-                    length=self.n_jump_ahead_timesteps * (self.n_jumps + 1) + self.n_fields,
-                )
-                self.target_pos_idx = torch.tensor(
-                    [
-                        i * self.n_jump_ahead_timesteps + self.n_fields - 1
-                        for i in range(1, self.n_jumps + 2)
-                    ]
-                )
+                raise ValueError(f"Unknown mode: {self.mode}")
 
     def len(self) -> int:
         return self.n_traj * self.n_per_traj
@@ -289,25 +212,6 @@ class ParticleDataset(InMemoryDataset):
                 target_positions = positions[:, self.n_fields - 1]
             target_positions = target_positions[perm_target]
             return input_velocities, input_positions, target_velocities, target_positions
-        elif type == "acceleration":
-            accelerations = velocities[:, 1:, :] - velocities[:, :-1, :]
-            input_accelerations = accelerations[:, :self.n_fields]
-            if self.mode == "train_autoencoder":
-                target_accelerations = input_accelerations
-            elif self.mode in ["train_physics", "val_physics"]:
-                target_accelerations = accelerations[:, self.target_field_idx]
-            input_accelerations = input_accelerations[perm_input]
-            target_accelerations = target_accelerations[perm_target]
-            input_accelerations = self.normalize_acc(input_accelerations)
-            target_accelerations = self.normalize_acc(target_accelerations)
-
-            input_positions = positions[perm_input, self.n_fields - 1]
-            if self.mode in ["train_physics", "val_physics"]:
-                target_positions = positions[:, self.target_pos_idx]
-            else:
-                target_positions = positions[:, self.n_fields - 1]
-            target_positions = target_positions[perm_target]
-            return input_accelerations, input_positions, target_accelerations, target_positions
         else:
             raise ValueError(f"Unknown type: {type}. Expected 'velocity' or 'acceleration'.")
 
@@ -369,11 +273,6 @@ class ParticleDataset(InMemoryDataset):
         )
 
         target_timestep = position_dict["time_idx"][self.target_pos_idx].unsqueeze(0)
-        if self.type == "acceleration":
-            target_timestep = target_timestep[..., 0]
-
-        if target_position.ndim >= 4: # TODO: For jumps, clean this up with einops
-            target_position = target_position.squeeze(1)
 
         return Data(
             input_enc_pos=input_position,
@@ -424,11 +323,6 @@ class ParticleDataset(InMemoryDataset):
         )
 
         target_timestep = position_dict["time_idx"][self.target_pos_idx].unsqueeze(0)
-        if self.type == "acceleration":
-            target_timestep = target_timestep[..., 0]
-        
-        if target_positions.ndim >= 4: # TODO: For jumps, clean this up with einops
-            target_positions = target_positions.squeeze(1)
         
         target_data = Data(
             target_pos=target_positions,
