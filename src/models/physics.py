@@ -221,78 +221,23 @@ class PhysicsLitModule(L.LightningModule):
             MSE_Field_normalized = []
             MSE_Field_latent = []
             propagated_latent = []
-
             new_pos = None
-            batch = next(subset_iter)
 
-            input_data, target_data = batch
-            input_data = input_data.to(device)
-            target_data = target_data.to(device)
-            n, n_time, n_dim = input_data.input_enc_field.shape
-
-            if model_type == "velocity":
-                n_redundant = n_time - dataset.n_jump_ahead_timesteps
-            elif model_type == "displacement": n_redundant = 0
-
-            # we solve jumping in rollout by striding the dataloader:
-            jump_idx = 0
-
-            pred_latent = self.encode(
-                enc_pos=input_data.input_enc_pos,
-                enc_field=input_data.input_enc_field,
-                enc_particle_type=input_data.input_enc_particle_type,
-                enc_pos_batch_index=input_data.batch,
-                supernode_index=input_data.supernode_index,
-                supernode_batch_index=input_data.supernode_index_batch,
-                timestep=input_data.input_timestep,
-            )
-            pred_latent = self.push_forward(
-                latent=pred_latent,
-                timestep=input_data.input_timestep
-            )
-            propagated_latent.append(pred_latent.cpu())
-            target_latent = self.encode(
-                enc_pos=target_data.target_pos[:, jump_idx],
-                enc_field=target_data.target_field[:, jump_idx],
-                enc_particle_type=input_data.input_enc_particle_type,
-                enc_pos_batch_index=target_data.batch,
-                supernode_index=target_data.supernode_index,
-                supernode_batch_index=target_data.supernode_index_batch,
-                timestep=target_data.target_timestep[:, jump_idx]
-            )
-            latent_loss = self.loss_function(pred_latent, target_latent)
-            preds_field = self.decode(
-                latent=pred_latent,
-                dec_field_pos=target_data.target_pos[:, jump_idx],
-                timestep=target_data.target_timestep[:, jump_idx],
-            )
-            target_field = flatten_time(target_data.target_field[:, jump_idx])
-            field_mse = nn.functional.mse_loss(preds_field, target_field)
-            preds_field = unflatten_time(preds_field, n_time, n_dim)
-
-            new_pos = update_position_cycle(
-                old_position=target_data.target_pos[:, jump_idx],
-                field_prediction=unnormalize(preds_field),
-                type=model_type,
-                n_redundant=n_redundant
-            )
-
-            rollout.append(new_pos.cpu())
-            field.append(unnormalize(preds_field).cpu())
-            GT_pos.append(target_data.target_pos[:, jump_idx].cpu())
-            GT_vel_field_normalized.append(
-                target_data.target_field[:, jump_idx].cpu()
-            )
-            MSE_Field_normalized.append(field_mse.cpu())
-            MSE_Field_latent.append(latent_loss.cpu())
-
-            for batch in subset_iter:
+            for i, batch in enumerate(subset_iter):
                 input_data, target_data = batch
                 input_data = input_data.to(device)
                 target_data = target_data.to(device)
-                pos = target_data.target_pos[:, jump_idx] if (query_gt_pos or (new_pos is None)) else new_pos
+                
+                if i == 0: # bootstrap iteration
+                    n, n_time, n_dim = input_data.input_enc_field.shape
 
-                if use_gt_field:
+                    if model_type == "velocity":
+                        n_redundant = n_time - dataset.n_jump_ahead_timesteps
+                    elif model_type == "displacement": n_redundant = 0
+
+                    # we solve jumping in rollout by striding the dataloader:
+                    jump_idx = 0
+
                     pred_latent = self.encode(
                         enc_pos=input_data.input_enc_pos,
                         enc_field=input_data.input_enc_field,
@@ -302,51 +247,70 @@ class PhysicsLitModule(L.LightningModule):
                         supernode_batch_index=input_data.supernode_index_batch,
                         timestep=input_data.input_timestep,
                     )
-                pred_latent = self.push_forward(
-                    latent=pred_latent,
-                    timestep=input_data.input_timestep
-                )
-                propagated_latent.append(pred_latent.cpu())
-                target_latent = self.encode(
-                    enc_pos=target_data.target_pos[:, jump_idx],
-                    enc_field=target_data.target_field[:, jump_idx],
-                    enc_particle_type=input_data.input_enc_particle_type,
-                    enc_pos_batch_index=target_data.batch,
-                    supernode_index=target_data.supernode_index,
-                    supernode_batch_index=target_data.supernode_index_batch,
-                    timestep=target_data.target_timestep[:, jump_idx]
-                )
-                latent_loss = self.loss_function(pred_latent, target_latent)
-                MSE_Field_latent.append(latent_loss.cpu())
+                    old_gt_latent = pred_latent # keep GT latent from previous step
+                    timestep = input_data.input_timestep
+                    pos = target_data.target_pos[:, jump_idx]
+                else:
+                    if use_gt_field:
+                        pred_latent = old_gt_latent
+                        old_gt_latent = self.encode(
+                            enc_pos=input_data.input_enc_pos,
+                            enc_field=input_data.input_enc_field,
+                            enc_particle_type=input_data.input_enc_particle_type,
+                            enc_pos_batch_index=input_data.batch,
+                            supernode_index=input_data.supernode_index,
+                            supernode_batch_index=input_data.supernode_index_batch,
+                            timestep=input_data.input_timestep,
+                        )
+                    
+                    pred_latent = self.push_forward(
+                        latent=pred_latent,
+                        timestep=timestep
+                    )
+                    timestep = input_data.input_timestep
+                    propagated_latent.append(pred_latent.cpu())
 
-                preds_field = self.decode(
-                    latent=pred_latent,
-                    dec_field_pos=pos,
-                    timestep=target_data.target_timestep[:, jump_idx],
-                )
-                preds_field_correct_pos = self.decode(
-                    latent=pred_latent,
-                    dec_field_pos=target_data.target_pos[:, jump_idx],
-                    timestep=target_data.target_timestep[:, jump_idx],
-                )
-                target_field = flatten_time(target_data.target_field[:, jump_idx])
-                field_mse = nn.functional.mse_loss(preds_field_correct_pos, target_field)
-                preds_field = unflatten_time(preds_field, n_time, n_dim)
+                    target_latent = self.encode(
+                        enc_pos=input_data.input_enc_pos,
+                        enc_field=input_data.input_enc_field,
+                        enc_particle_type=input_data.input_enc_particle_type,
+                        enc_pos_batch_index=input_data.batch,
+                        supernode_index=input_data.supernode_index,
+                        supernode_batch_index=input_data.supernode_index_batch,
+                        timestep=input_data.input_timestep,
+                    )
+                    latent_loss = self.loss_function(pred_latent, target_latent)
+                    MSE_Field_latent.append(latent_loss.cpu())
 
-                new_pos = update_position_cycle(
-                    old_position=pos,
-                    field_prediction=unnormalize(preds_field),
-                    type=model_type,
-                    n_redundant=n_redundant
-                )
+                    preds_field = self.decode(
+                        latent=pred_latent,
+                        dec_field_pos=pos,
+                        timestep=timestep,
+                    )
+                    preds_field_correct_pos = self.decode(
+                        latent=pred_latent,
+                        dec_field_pos=input_data.input_enc_pos,
+                        timestep=timestep,
+                    )
+                    target_field = flatten_time(input_data.input_enc_field)
+                    field_mse = nn.functional.mse_loss(preds_field_correct_pos, target_field)
+                    preds_field = unflatten_time(preds_field, n_time, n_dim)
 
-                rollout.append(new_pos.cpu())
-                field.append(unnormalize(preds_field).cpu())
-                GT_pos.append(target_data.target_pos[:, jump_idx].cpu())
-                GT_vel_field_normalized.append(
-                    target_data.target_field[:, jump_idx].cpu()
-                )
-                MSE_Field_normalized.append(field_mse.cpu())
+                    new_pos = update_position_cycle(
+                        old_position=pos,
+                        field_prediction=unnormalize(preds_field),
+                        type=model_type,
+                        n_redundant=n_redundant
+                    )
+                    pos = target_data.target_pos[:, jump_idx] if query_gt_pos else new_pos
+
+                    rollout.append(new_pos.cpu())
+                    field.append(unnormalize(preds_field).cpu())
+                    GT_pos.append(target_data.target_pos[:, jump_idx].cpu())
+                    GT_vel_field_normalized.append(
+                        target_data.target_field[:, jump_idx].cpu()
+                    )
+                    MSE_Field_normalized.append(field_mse.cpu())
             rollouts.append(torch.stack(rollout))
             fields.append(torch.stack(field))
             GT_positions.append(torch.stack(GT_pos))
