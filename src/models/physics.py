@@ -18,7 +18,8 @@ from src.datasets.particle_datamodule import ParticleDataset, ParticleDataModule
 from src.models.utils import (
     unflatten_time,
     flatten_time,
-    update_position_cycle
+    update_position_cycle,
+    rollout_iteration
 )
 from src.datasets.utils import get_subset_iters
 
@@ -250,67 +251,44 @@ class PhysicsLitModule(L.LightningModule):
                     old_gt_latent = pred_latent # keep GT latent from previous step
                     timestep = input_data.input_timestep
                     pos = target_data.target_pos[:, jump_idx]
+
+                    _rollout_iteration = partial(
+                        rollout_iteration,
+                        model=self,
+                        model_type=model_type,
+                        use_gt_field=use_gt_field,
+                        query_gt_pos=query_gt_pos,
+                        n_redundant=n_redundant,
+                        unnormalize=unnormalize,
+                        jump_idx=jump_idx,
+                        n_time=n_time,
+                        n_dim=n_dim,
+                    )
                 else:
-                    if use_gt_field:
-                        pred_latent = old_gt_latent
-                        old_gt_latent = self.encode(
-                            enc_pos=input_data.input_enc_pos,
-                            enc_field=input_data.input_enc_field,
-                            enc_particle_type=input_data.input_enc_particle_type,
-                            enc_pos_batch_index=input_data.batch,
-                            supernode_index=input_data.supernode_index,
-                            supernode_batch_index=input_data.supernode_index_batch,
-                            timestep=input_data.input_timestep,
-                        )
-                    
-                    pred_latent = self.push_forward(
-                        latent=pred_latent,
-                        timestep=timestep
-                    )
-                    timestep = input_data.input_timestep
-                    propagated_latent.append(pred_latent.cpu())
-
-                    target_latent = self.encode(
-                        enc_pos=input_data.input_enc_pos,
-                        enc_field=input_data.input_enc_field,
-                        enc_particle_type=input_data.input_enc_particle_type,
-                        enc_pos_batch_index=input_data.batch,
-                        supernode_index=input_data.supernode_index,
-                        supernode_batch_index=input_data.supernode_index_batch,
-                        timestep=input_data.input_timestep,
-                    )
-                    latent_loss = self.loss_function(pred_latent, target_latent)
-                    MSE_Field_latent.append(latent_loss.cpu())
-
-                    preds_field = self.decode(
-                        latent=pred_latent,
-                        dec_field_pos=pos,
+                    outputs, state = _rollout_iteration(
+                        input_data=input_data,
+                        target_data=target_data,
+                        pos=pos,
                         timestep=timestep,
+                        pred_latent=pred_latent,
+                        old_gt_latent=old_gt_latent,
                     )
-                    preds_field_correct_pos = self.decode(
-                        latent=pred_latent,
-                        dec_field_pos=input_data.input_enc_pos,
-                        timestep=timestep,
-                    )
-                    target_field = flatten_time(input_data.input_enc_field)
-                    field_mse = nn.functional.mse_loss(preds_field_correct_pos, target_field)
-                    preds_field = unflatten_time(preds_field, n_time, n_dim)
 
-                    new_pos = update_position_cycle(
-                        old_position=pos,
-                        field_prediction=unnormalize(preds_field),
-                        type=model_type,
-                        n_redundant=n_redundant
-                    )
-                    pos = target_data.target_pos[:, jump_idx] if query_gt_pos else new_pos
-
-                    rollout.append(new_pos.cpu())
-                    field.append(unnormalize(preds_field).cpu())
-                    GT_pos.append(target_data.target_pos[:, jump_idx].cpu())
+                    rollout.append(outputs["rollout_step"].cpu())
+                    field.append(outputs["field_step"].cpu())
+                    GT_pos.append(outputs["GT_pos_step"].cpu())
                     GT_vel_field_normalized.append(
-                        target_data.target_field[:, jump_idx].cpu()
+                        outputs["GT_vel_field_normalized_step"].cpu()
                     )
-                    MSE_Field_normalized.append(field_mse.cpu())
+                    MSE_Field_normalized.append(outputs["MSE_Field_normalized_step"].cpu())
+                    MSE_Field_latent.append(outputs["MSE_Field_latent_step"].cpu())
+                    propagated_latent.append(outputs["propagated_latent_step"].cpu())
+
+                    pos = state["pos_next"]
+                    timestep = state["timestep_next"]
+                    pred_latent = state["pred_latent_next"]
+                    old_gt_latent = state["old_gt_latent_next"]
+
             rollouts.append(torch.stack(rollout))
             fields.append(torch.stack(field))
             GT_positions.append(torch.stack(GT_pos))
@@ -320,6 +298,7 @@ class PhysicsLitModule(L.LightningModule):
             MSE_Fields_normalized.append(torch.stack(MSE_Field_normalized))
             MSE_Fields_latent.append(torch.stack(MSE_Field_latent))
             propagated_latents.append(torch.stack(propagated_latent))
+
         if len(subset_iters) == 1:
             rollouts = rollouts[0]
             fields = fields[0]
@@ -328,6 +307,7 @@ class PhysicsLitModule(L.LightningModule):
             MSE_Fields_normalized = MSE_Fields_normalized[0]
             MSE_Fields_latent = MSE_Fields_latent[0]
             propagated_latents = propagated_latents[0]
+        
         return (
             rollouts,
             fields,
