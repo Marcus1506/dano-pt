@@ -274,20 +274,44 @@ class PhysicsLitModule(L.LightningModule):
                         old_gt_latent=old_gt_latent,
                     )
 
-                    rollout.append(outputs["rollout_step"].cpu())
-                    field.append(outputs["field_step"].cpu())
-                    GT_pos.append(outputs["GT_pos_step"].cpu())
+                    rollout.append(outputs["rollout_step"])
+                    field.append(outputs["field_step"])
+                    GT_pos.append(outputs["GT_pos_step"])
                     GT_vel_field_normalized.append(
-                        outputs["GT_vel_field_normalized_step"].cpu()
+                        outputs["GT_vel_field_normalized_step"]
                     )
-                    MSE_Field_normalized.append(outputs["MSE_Field_normalized_step"].cpu())
-                    MSE_Field_latent.append(outputs["MSE_Field_latent_step"].cpu())
-                    propagated_latent.append(outputs["propagated_latent_step"].cpu())
+                    MSE_Field_normalized.append(outputs["MSE_Field_normalized_step"])
+                    MSE_Field_latent.append(outputs["MSE_Field_latent_step"])
+                    propagated_latent.append(outputs["propagated_latent_step"])
 
                     pos = state["pos_next"]
                     timestep = state["timestep_next"]
                     pred_latent = state["pred_latent_next"]
                     old_gt_latent = state["old_gt_latent_next"]
+
+            # Grab last rollout step and GT explicitly
+            if use_gt_field:
+                pred_latent = old_gt_latent
+            pred_latent = self.push_forward(
+                latent=pred_latent,
+                timestep=timestep
+            )
+            timestep = target_data.target_timestep[:, jump_idx]
+            preds_field = self.decode(
+                latent=pred_latent,
+                dec_field_pos=pos,
+                timestep=timestep,
+            )
+            preds_field = unflatten_time(preds_field, n_time, n_dim)
+            preds_field_unnorm = unnormalize(preds_field)
+            pos = update_position_cycle(
+                old_position=pos,
+                field_prediction=preds_field_unnorm,
+                type=model_type,
+                n_redundant=n_redundant
+            )
+            rollout.append(pos.cpu())
+            GT_pos.append(target_data.last_pos.cpu())
 
             rollouts.append(torch.stack(rollout))
             fields.append(torch.stack(field))

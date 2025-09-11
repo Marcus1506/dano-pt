@@ -341,6 +341,7 @@ class ParticleDataset(InMemoryDataset):
             supernode_index=supernode_index,
             target_timestep=target_timestep,
             num_nodes=len(perm_target),
+            last_pos=position[perm_target, -1], # this is needed for GT in rollout
         )
         return input_data, target_data
 
