@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 import time
 import numpy as np
 from omegaconf import OmegaConf
@@ -6,6 +7,10 @@ from hydra.core.global_hydra import GlobalHydra
 from hydra.utils import instantiate
 import torch
 import random
+import rootutils
+
+# Ensure repository root is on PYTHONPATH so `src` can be imported from anywhere
+rootutils.setup_root(__file__, indicator=".project-root", pythonpath=True)
 
 from src.models.physics import PhysicsLitModule
 from src.models.utils import (
@@ -15,7 +20,8 @@ from src.models.utils import (
 from src.datasets.utils import get_subset_iters
 
 GlobalHydra.instance().clear()
-os.environ["PROJECT_ROOT"] = os.path.abspath(".")
+REPO_ROOT = Path(__file__).resolve().parents[1]
+os.environ["PROJECT_ROOT"] = str(REPO_ROOT)
 
 SEED = 42
 
@@ -36,8 +42,8 @@ torch.backends.cuda.matmul.allow_tf32 = False
 torch.backends.cudnn.allow_tf32 = False
 os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":4096:8"
 
-HYDRA_CONFIG = "logs/train/runs/2025-09-06_08-42-16/.hydra/config.yaml"
-CHKPT = "logs/train/runs/2025-09-06_08-42-16/waterdrop_physics/nu7i8rej/checkpoints/epoch=27-step=403620.ckpt"
+HYDRA_CONFIG = str(REPO_ROOT / "logs/train/runs/2025-09-12_18-29-07/.hydra/config.yaml")
+CHKPT = str(REPO_ROOT / "logs/train/runs/2025-09-12_18-29-07/waterdrop_physics/9odrn4lu/checkpoints/epoch=27-step=403620.ckpt")
 
 if __name__ == "__main__":
     cfg          = OmegaConf.load(
