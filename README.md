@@ -48,3 +48,9 @@ You can override any parameter from command line like this
 ```bash
 python src/train.py trainer.max_epochs=20 data.batch_size=64
 ```
+
+Collect rollout performance time, after placing and referencing the correct checkpoint in [rollout.py](scripts/rollout.py).
+
+```bash
+python scripts/rollout.py
+```
