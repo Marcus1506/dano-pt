@@ -79,6 +79,7 @@ if __name__ == "__main__":
 
     # Pre rollout
     model_type = dataset.type
+    assert model_type in ["velocity", "displacement"], f"Unknown model type for this script: '{model_type}'"
     unnormalize = dataset.unnormalize
     subset_iters = get_subset_iters(
         dataset,

@@ -108,6 +108,7 @@ class ParticleDataset(InMemoryDataset):
             if self.type in ["velocity", "displacement"]:
                 length = self.n_fields + 1
             elif self.type == "acceleration":
+                self.n_per_traj -= 1
                 length = self.n_fields + 2
             self.pos_getter = partial(self.get_positions, length=length)
             self.field_getter = partial(self.get_fields, type=self.type)
@@ -117,8 +118,8 @@ class ParticleDataset(InMemoryDataset):
                 if "sequence_length_val" in self.metadata
                 else self.metadata["sequence_length"]
             )
+            assert self.n_jump_ahead_timesteps <= self.n_fields, "Temporal overlap needed."
             if self.type in ["velocity", "displacement"]:
-                assert self.n_jump_ahead_timesteps <= self.n_fields # temporal overlap
                 self.n_per_traj = (
                     self.n_seq - self.n_jump_ahead_timesteps * self.n_jumps - (self.n_fields - 1)
                 )
@@ -155,6 +156,32 @@ class ParticleDataset(InMemoryDataset):
                     self.field_getter = partial(self.get_fields, type=self.type)
                     self.target_field_idx = self.target_field_idx[:1]
                     self.target_pos_idx = self.target_pos_idx[:1]
+            elif self.type == "acceleration":
+                self.n_per_traj = (
+                    self.n_seq - self.n_jump_ahead_timesteps * self.n_jumps - (self.n_fields - 1) - 1
+                )
+                self.pos_getter = partial(
+                    self.get_positions,
+                    length=self.n_jump_ahead_timesteps * self.n_jumps + self.n_fields + 2,
+                )
+                self.field_getter = partial(self.get_fields, type=self.type)
+                self.target_field_idx = torch.tensor( # same as velocity
+                    [
+                        list(
+                            range(
+                                i * self.n_jump_ahead_timesteps,
+                                i * self.n_jump_ahead_timesteps + self.n_fields,
+                            )
+                        )
+                        for i in range(1, self.n_jumps + 1)
+                    ]
+                )
+                self.target_pos_idx = torch.tensor(
+                    [
+                        i * self.n_jump_ahead_timesteps
+                        for i in range(1, self.n_jumps + 1)
+                    ]
+                )
             else:
                 raise ValueError(f"Unknown mode: {self.mode}")
 
@@ -223,6 +250,25 @@ class ParticleDataset(InMemoryDataset):
                 target_positions = positions[:, self.n_fields - 1]
             target_positions = target_positions[perm_target]
             return input_velocities, input_positions, target_velocities, target_positions
+        elif type == "acceleration":
+            accels = velocities[:, 1:, :] - velocities[:, :-1, :]
+            input_accelerations = accels[:, :self.n_fields]
+            if self.mode == "train_autoencoder":
+                target_accelerations = input_accelerations
+            elif self.mode in ["train_physics", "val_physics"]:
+                target_accelerations = accels[:, self.target_field_idx]
+            input_accelerations = input_accelerations[perm_input]
+            target_accelerations = target_accelerations[perm_target]
+            input_accelerations = self.normalize_acc(input_accelerations)
+            target_accelerations = self.normalize_acc(target_accelerations)
+
+            input_positions = positions[perm_input, 0]
+            if self.mode in ["train_physics", "val_physics"]:
+                target_positions = positions[:, self.target_pos_idx]
+            else:
+                target_positions = positions[:, 0]
+            target_positions = target_positions[perm_target]
+            return input_accelerations, input_positions, target_accelerations, target_positions
         else:
             raise ValueError(f"Unknown type: {type}. Expected 'velocity' or 'acceleration'.")
 
@@ -331,6 +377,7 @@ class ParticleDataset(InMemoryDataset):
             input_timestep=position_dict["time_idx"][0],
             num_nodes=len(input_positions),
             idx=idx,
+            second_pos=position[perm_target, 1] if self.type == "acceleration" else None # needed for acceleration rollout
         )
 
         target_timestep = position_dict["time_idx"][self.target_pos_idx].unsqueeze(0)
@@ -341,7 +388,8 @@ class ParticleDataset(InMemoryDataset):
             supernode_index=supernode_index,
             target_timestep=target_timestep,
             num_nodes=len(perm_target),
-            last_pos=position[perm_target, -1], # this is needed for GT in rollout
+            last_pos=position[perm_target, -1], # this is needed for last GT in rollout
+            second_pos=position[perm_target, self.n_fields + 1] if self.type == "acceleration" else None # needed for acceleration rollout
         )
         return input_data, target_data
 

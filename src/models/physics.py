@@ -193,6 +193,9 @@ class PhysicsLitModule(L.LightningModule):
             ]:
         dataset = particle_dm.get_dataset(split=split)
         model_type = dataset.type
+        if model_type == "acceleration":
+            assert not use_gt_field, "use_gt_field not supported for acceleration models"
+            assert not query_gt_pos, "query_gt_pos not supported for acceleration models"
         assert dataset.rollout
         unnormalize = dataset.unnormalize
         normalize = dataset.normalize
@@ -232,7 +235,7 @@ class PhysicsLitModule(L.LightningModule):
                 if i == 0: # bootstrap iteration
                     n, n_time, n_dim = input_data.input_enc_field.shape
 
-                    if model_type == "velocity":
+                    if model_type in ["velocity", "acceleration"]:
                         n_redundant = n_time - dataset.n_jump_ahead_timesteps
                     elif model_type == "displacement": n_redundant = 0
 
@@ -251,6 +254,8 @@ class PhysicsLitModule(L.LightningModule):
                     old_gt_latent = pred_latent # keep GT latent from previous step
                     timestep = input_data.input_timestep
                     pos = target_data.target_pos[:, jump_idx]
+                    if model_type == "acceleration":
+                        pos = torch.stack((pos, target_data.second_pos), dim=1)
 
                     _rollout_iteration = partial(
                         rollout_iteration,
@@ -297,9 +302,10 @@ class PhysicsLitModule(L.LightningModule):
                 timestep=timestep
             )
             timestep = target_data.target_timestep[:, jump_idx]
+            decode_pos = pos[:, 0] if model_type == "acceleration" else pos
             preds_field = self.decode(
                 latent=pred_latent,
-                dec_field_pos=pos,
+                dec_field_pos=decode_pos,
                 timestep=timestep,
             )
             preds_field = unflatten_time(preds_field, n_time, n_dim)
@@ -310,7 +316,8 @@ class PhysicsLitModule(L.LightningModule):
                 type=model_type,
                 n_redundant=n_redundant
             )
-            rollout.append(pos.cpu())
+            last_pos = pos[:, 1] if model_type == "acceleration" else pos
+            rollout.append(last_pos.cpu())
             GT_pos.append(target_data.last_pos.cpu())
 
             rollouts.append(torch.stack(rollout))

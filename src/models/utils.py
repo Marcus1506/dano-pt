@@ -27,16 +27,26 @@ def update_position_cycle(
     Takes in field prediction and old position and returns new position.
     Fields are either of shape (n, t, n_dim) or (n, n_jumps, t, n_dim).
     """
-    if n_redundant != 0:
-        field_prediction = field_prediction[..., :-n_redundant, :]
-    if field_prediction.ndim > 2:
-        field_prediction = torch.sum(field_prediction, dim=-2)
-    else:
-        field_prediction = field_prediction.squeeze(1)
     if type in ["velocity", "displacement"]:
-        new_position = old_position + field_prediction
+        if n_redundant != 0:
+            field_prediction = field_prediction[..., :-n_redundant, :]
+        if field_prediction.ndim > 2:
+            field_prediction = torch.sum(field_prediction, dim=-2)
+        else:
+            field_prediction = field_prediction.squeeze(1)
+        if type in ["velocity", "displacement"]:
+            new_position = old_position + field_prediction
     elif type == "acceleration":
-        raise NotImplementedError
+        assert n_redundant == 0, "n_redundant not 0 not supported for acceleration models"
+        assert old_position.shape[1] == 2, "Acceleration needs two positions"
+        new_vel_start = old_position[:, 1, :] - old_position[:, 0, :]
+        new_vels = new_vel_start.unsqueeze(1) + field_prediction
+        new_vels_sum = torch.sum(new_vels, dim=-2)
+        new_position_1 = old_position[..., 0, :] + new_vels_sum
+        new_position_0 = old_position[..., 0, :] + new_vels_sum - new_vels[..., -1, :]
+        new_position = torch.stack([new_position_0, new_position_1], dim=-2)
+    else:
+        raise ValueError(f"Unknown model type '{type}'")
     return new_position
 
 def rollout_iteration(
@@ -97,9 +107,10 @@ def rollout_iteration(
     latent_loss = model.loss_function(pred_latent, target_latent)
 
     # Decode to current pos and to the "correct" enc pos (used for field MSE)
+    decode_pos = pos[:, 0] if model_type == "acceleration" else pos
     preds_field = model.decode(
         latent=pred_latent,
-        dec_field_pos=pos,
+        dec_field_pos=decode_pos,
         timestep=timestep,
     )
     preds_field_correct_pos = model.decode(
@@ -124,7 +135,9 @@ def rollout_iteration(
         n_redundant=n_redundant
     )
     pos_next = target_data.target_pos[:, jump_idx] if query_gt_pos else new_pos
-
+    if model_type == "acceleration":
+        new_pos = new_pos[..., -1, :]
+    
     # Build per-step outputs
     outputs = {
         "rollout_step": new_pos.detach().cpu(),
