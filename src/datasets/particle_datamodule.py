@@ -182,6 +182,17 @@ class ParticleDataset(InMemoryDataset):
                         for i in range(1, self.n_jumps + 1)
                     ]
                 )
+                if self.rollout: # ugly
+                    self.n_per_traj = (
+                        self.n_seq - self.n_jump_ahead_timesteps * 1 - (self.n_fields - 1) - 1
+                    )
+                    self.pos_getter = partial(
+                        self.get_positions,
+                        length=self.n_jump_ahead_timesteps * 1 + self.n_fields + 2,
+                    )
+                    self.field_getter = partial(self.get_fields, type=self.type)
+                    self.target_field_idx = self.target_field_idx[:1]
+                    self.target_pos_idx = self.target_pos_idx[:1]
             else:
                 raise ValueError(f"Unknown mode: {self.mode}")
 
