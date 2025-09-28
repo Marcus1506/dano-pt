@@ -14,6 +14,7 @@ def animate(
         n_skip_ahead_timesteps: int = 1,
         figsize: tuple[float, float] | None = None,
         dpi: int | None = None,
+        labels: list[str] | None = None,
     ) -> animation.FuncAnimation:
     """
     Animates up to three sub-plots (in columns):
@@ -46,6 +47,8 @@ def animate(
 
     if rollout_np.ndim != 3 or rollout_np.shape[-1] != 2:
         raise ValueError(f"rollout must be (T,N,2); got {rollout_np.shape}")
+    if labels is not None:
+        assert len(labels) == 2, "Custom labels for rollout and ground truth possible."
 
     T, N, _ = rollout_np.shape
 
@@ -149,7 +152,10 @@ def animate(
 
     # Rollout subplot
     sc_rollout = ax_rollout.scatter(rollout_np[0, :, 0], rollout_np[0, :, 1], s=40)
-    ax_rollout.set_title('Rollout', fontsize=title_fs)
+    if labels is not None:
+        ax_rollout.set_title(labels[0], fontsize=title_fs)
+    else:
+        ax_rollout.set_title('Rollout', fontsize=title_fs)
     ax_rollout.set_xlabel('X'); ax_rollout.set_ylabel('Y')
     ax_rollout.grid(False)
     ax_rollout.set_xlim(min_x - margin, max_x + margin)
@@ -180,7 +186,10 @@ def animate(
     # Ground-truth subplot
     if has_gt:
         sc_gt = ax_gt.scatter(GT_np[0, :, 0], GT_np[0, :, 1], s=40)
-        ax_gt.set_title('Ground Truth', fontsize=title_fs)
+        if labels is not None:
+            ax_gt.set_title(labels[1], fontsize=title_fs)
+        else:
+            ax_gt.set_title('Ground Truth', fontsize=title_fs)
         ax_gt.set_xlabel('X'); ax_gt.set_ylabel('Y')
         ax_gt.grid(False)
         ax_gt.set_xlim(min_x - margin, max_x + margin)
