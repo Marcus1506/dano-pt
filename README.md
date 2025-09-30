@@ -1,6 +1,6 @@
 <div align="center">
 
-# DANO-PT: Domain-Agnostic Neural Operator for Particle Tracking
+# NOPT: Neural Operator for Particle Tracking
 
 [![python](https://img.shields.io/badge/-Python_3.11-blue?logo=python&logoColor=white)](https://www.python.org/downloads/release/python-3110/)
 [![pytorch](https://img.shields.io/badge/PyTorch_2.6-ee4c2c?logo=pytorch&logoColor=white)](https://pytorch.org/docs/2.6/)
